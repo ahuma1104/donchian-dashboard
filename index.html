@@ -96,6 +96,15 @@
   .intro .bands{display:flex;flex-direction:column;gap:7px;margin:4px 0 14px}
   .intro .bandrow{display:flex;align-items:baseline;gap:9px}
   .intro .bandrow .dotc{width:9px;height:9px;border-radius:50%;flex:none;position:relative;top:1px}
+  .pb{display:flex;flex-direction:column;gap:0}
+  .pbrow{display:grid;grid-template-columns:160px 1fr;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .pbrow:last-child{border-bottom:none}
+  @media(max-width:640px){.pbrow{grid-template-columns:1fr;gap:5px}}
+  .pbrow .zone{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700}
+  .pbrow .zone .bar{width:5px;height:30px;border-radius:3px;flex:none}
+  .pbrow .desc{color:var(--muted);font-size:12.5px;line-height:1.6}
+  .pbrow .desc b{color:var(--ink)}
+  .pbrow .act{color:var(--accent2);font-size:11px;letter-spacing:.04em;margin-top:4px;display:block}
 </style>
 </head>
 <body>
@@ -105,7 +114,7 @@ const {useState,useMemo,useEffect} = React;
 
 // ⬇️⬇️ PEGÁ ACÁ EL LINK CSV PUBLICADO DE TU PLANILLA (ver pasos en el chat)
 // Si lo dejás vacío (''), el dashboard funciona en modo manual (pegar datos).
-const DATA_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXUdfaLcjepKqnvI3jEXjrr2vRdOmf8MLgGoFh4Sro-GBj7RAAZn-2l1ajYrz7zT8X7U4hCDEvnW5y/pub?gid=529206138&single=true&output=csv';
+const DATA_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXUdfaLcjepKqnvI3jEXjrr2vRdOmf8MLgGoFh4Sro-GBj7RAAZn-2l1ajYrz7zT8X7U4hCDEvnW5y/pubhtml';
 
 // ---------- DATOS DE EJEMPLO (reemplazar pegando los tuyos) ----------
 // Formato del fetcher: Ticker,Date,High,Low,Close  — semanal
@@ -387,6 +396,37 @@ Estado: ${estado.txt}
          </div>
          <p><b>Cómo leerlo rápido:</b> si el precio toca o supera la banda superior, viene fuerte (posible ruptura alcista); si toca la inferior, viene débil. La barra de colores del panel derecho te muestra de un vistazo en qué parte del canal está parado.</p>
          <p style={{margin:0,color:'var(--dim)',fontSize:'11px'}}>El Donchian necesita máximos y mínimos de cada vela, no solo el cierre. Análisis técnico, no es una recomendación de compra o venta.</p>
+       </div>
+     </details>
+
+     <details className="intro">
+       <summary>Cómo leer la señal · qué hacer según dónde está el precio <span className="chev">▾</span></summary>
+       <div className="body">
+         <p style={{marginBottom:'12px'}}>Esto es una guía de lectura, no una regla automática. El Donchian te da la <b>geometría del precio</b> (en qué parte de su rango está el papel); el RRG te da la <b>rotación</b> (en qué cuadrante está el sector o el papel vs. el SPY). La idea es cruzar los dos: cuando coinciden, tenés convicción; cuando se contradicen, dudás.</p>
+         <p style={{marginBottom:'14px',background:'var(--panel2)',borderRadius:'8px',padding:'11px 13px'}}>🧭 <b>Regla rápida de cruce con el RRG:</b> señal fuerte del Donchian (mitad superior o ruptura arriba) + cuadrante <b style={{color:'var(--up)'}}>LIDERANDO</b> o <b style={{color:'var(--mid)'}}>MEJORANDO</b> = convergencia, confirmada. Señal fuerte del Donchian pero cuadrante <b style={{color:'var(--down)'}}>REZAGADO</b> o <b>DEBILITANDO</b> = divergencia: puede ser un rebote sin respaldo de rotación (ojo, tu patrón de trampa).</p>
+         <div className="pb">
+           <div className="pbrow">
+             <div className="zone"><span className="bar" style={{background:'var(--up)'}}></span>Ruptura alcista</div>
+             <div className="desc">El precio toca o supera la <b>banda superior</b>: hizo un nuevo máximo de N semanas, viene fuerte.<span className="act">→ Cruzá con el RRG: si el sector o el papel está en LIDERANDO o MEJORANDO, es confirmación. Si está en REZAGADO, puede ser rebote sin respaldo. Ojo con la extensión igual: si ya está parabólico, la fuerza no es excusa para entrar tarde.</span></div>
+           </div>
+           <div className="pbrow">
+             <div className="zone"><span className="bar" style={{background:'linear-gradient(var(--up),var(--mid))'}}></span>Mitad superior</div>
+             <div className="desc">Entre la <b>línea media y el techo</b>: bien parado, tendencia sana.<span className="act">→ Sostener mientras el RRG lo acompañe (LIDERANDO o MEJORANDO). Si el cuadrante empieza a girar hacia DEBILITANDO, ahí prendé la alarma.</span></div>
+           </div>
+           <div className="pbrow">
+             <div className="zone"><span className="bar" style={{background:'var(--mid)'}}></span>Sobre la media</div>
+             <div className="desc">Pegado a la <b>línea media</b>: zona bisagra, puede definir para cualquier lado.<span className="act">→ Vigilar 2-3 ruedas. Mirá hacia dónde apunta la flecha del papel en el RRG: te anticipa para qué lado puede romper.</span></div>
+           </div>
+           <div className="pbrow">
+             <div className="zone"><span className="bar" style={{background:'linear-gradient(var(--mid),var(--down))'}}></span>Mitad inferior</div>
+             <div className="desc">Entre el <b>piso y la media</b>: perdió la media, se está debilitando.<span className="act">→ Revisar. Si además el RRG está en DEBILITANDO o REZAGADO, es salida clara. Si el RRG sigue en LIDERANDO, puede ser sólo una corrección dentro de tendencia fuerte: no te apures a soltar.</span></div>
+           </div>
+           <div className="pbrow">
+             <div className="zone"><span className="bar" style={{background:'var(--down)'}}></span>Ruptura bajista</div>
+             <div className="desc">El precio toca o perfora la <b>banda inferior</b>: nuevo mínimo de N semanas, débil.<span className="act">→ Señal de salida / stop, sobre todo si el RRG confirma (DEBILITANDO o REZAGADO). No comprar la caída: un piso roto suele buscar pisos más bajos.</span></div>
+           </div>
+         </div>
+         <p style={{marginTop:'14px',marginBottom:0,color:'var(--dim)',fontSize:'11px'}}>Las bandas y la media se recalculan cada semana: los niveles se mueven solos a medida que entran velas nuevas. No los tomes como líneas fijas. Análisis técnico, no es recomendación.</p>
        </div>
      </details>
 
