@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Donchian Channels — Dashboard</title>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#0f141c; --panel2:#131a24; --line:#1e2733;
+    --ink:#e6edf3; --muted:#7d8da0; --dim:#586577;
+    --accent:#2dd4bf; --accent2:#34d399;
+    --up:#26a69a; --down:#ef5350; --mid:#f0b429; --price:#5ec8ff;
+    --band:rgba(45,212,191,.10);
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+    --serif:Georgia,'Times New Roman',serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 80px}
+  .eyebrow{font-size:11px;letter-spacing:.42em;color:var(--dim);text-transform:uppercase}
+  h1{font-family:var(--serif);font-size:34px;font-weight:700;margin:4px 0 2px;letter-spacing:-.5px}
+  h1 em{color:var(--accent);font-style:italic}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:22px}
+  .grid{display:grid;grid-template-columns:1.55fr 1fr;gap:18px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .card h2{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent2);margin:0 0 14px;font-weight:600}
+  textarea{width:100%;min-height:118px;background:#080c11;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-family:var(--mono);font-size:12px;padding:10px;resize:vertical}
+  textarea:focus{outline:none;border-color:var(--accent)}
+  .controls{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
+  .field label{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  .field input[type=number]{width:84px;background:#080c11;border:1px solid var(--line);border-radius:7px;color:var(--ink);font-family:var(--mono);padding:7px 9px;font-size:13px}
+  .field input:focus{outline:none;border-color:var(--accent)}
+  .toggle{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--muted);font-size:11px;user-select:none}
+  .toggle input{accent-color:var(--accent);width:15px;height:15px}
+  .btn{background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:7px;padding:8px 14px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:.15s}
+  .btn:hover{background:rgba(45,212,191,.12)}
+  .btn.solid{background:var(--accent);color:#04201c;border-color:var(--accent)}
+  .btn.solid:hover{background:var(--accent2)}
+  .err{color:var(--down);font-size:11px;margin-top:8px}
+  .demo{color:var(--mid);font-size:11px;margin-top:8px}
+  .detect{color:var(--dim);font-size:11px;margin-top:10px}
+  .detect b{color:var(--accent2)}
+  .pf{margin-bottom:18px}
+  .pfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .pfchip{text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;cursor:pointer;font-family:var(--mono);transition:.15s;color:var(--ink)}
+  .pfchip:hover{border-color:var(--dim)}
+  .pfchip.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .pfchip .nm{font-size:14px;font-weight:700;letter-spacing:.04em;margin-bottom:6px}
+  .pfchip .est{font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+  .pfchip .est.alc{color:var(--up)} .pfchip .est.baj{color:var(--down)} .pfchip .est.neu{color:var(--muted)}
+  .pfchip .mini{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--down),var(--mid),var(--up));position:relative;margin-top:8px}
+  .pfchip .mini i{position:absolute;top:-2px;width:9px;height:9px;border-radius:50%;background:var(--price);border:2px solid var(--panel2);transform:translateX(-50%)}
+  .statusbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .st{font-size:12px;letter-spacing:.02em}
+  .st.ok{color:var(--accent2)} .st.load{color:var(--mid)} .st.bad{color:var(--down)} .st.man{color:var(--muted)}
+  .btn.mini{padding:5px 11px;font-size:10px}
+  .btn.mini:disabled{opacity:.4;cursor:default}
+  .readrow{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+  .readrow:last-child{border-bottom:none}
+  .readrow .k{color:var(--muted);font-size:11px;letter-spacing:.06em}
+  .readrow .v{font-size:16px;font-weight:600}
+  .v.up{color:var(--up)} .v.down{color:var(--down)} .v.mid{color:var(--mid)} .v.price{color:var(--price)}
+  .pill{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+  .pill.alc{background:rgba(38,166,154,.16);color:var(--up)}
+  .pill.baj{background:rgba(239,83,80,.16);color:var(--down)}
+  .pill.neu{background:rgba(125,141,160,.16);color:var(--muted)}
+  .posbar{height:10px;border-radius:6px;background:linear-gradient(90deg,var(--down),var(--mid),var(--up));position:relative;margin:10px 0 4px}
+  .posbar .dot{position:absolute;top:-4px;width:18px;height:18px;border-radius:50%;background:var(--price);border:3px solid var(--bg);transform:translateX(-50%);box-shadow:0 0 0 1px var(--price)}
+  .poslbl{display:flex;justify-content:space-between;font-size:10px;color:var(--dim)}
+  .chartcard{margin-top:18px}
+  svg{display:block;width:100%;height:auto}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .swatch{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .note{background:var(--panel2);border-left:3px solid var(--mid);border-radius:0 8px 8px 0;padding:12px 14px;margin-top:18px;font-size:12px;color:var(--muted)}
+  .note b{color:var(--ink)}
+  .summary{white-space:pre-wrap;background:#080c11;border:1px solid var(--line);border-radius:8px;padding:12px;font-size:12px;color:#cdd6e0;margin-top:12px;display:none}
+  .summary.show{display:block}
+  .intro{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:18px;overflow:hidden}
+  .intro summary{list-style:none;cursor:pointer;padding:15px 18px;display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent2);font-weight:600}
+  .intro summary::-webkit-details-marker{display:none}
+  .intro summary .chev{color:var(--dim);transition:.2s}
+  .intro[open] summary .chev{transform:rotate(180deg)}
+  .intro .body{padding:0 18px 18px;color:var(--muted);font-size:12.5px;line-height:1.65}
+  .intro .body p{margin:0 0 12px}
+  .intro .body b{color:var(--ink)}
+  .intro .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:6px 0 14px}
+  @media(max-width:700px){.intro .steps{grid-template-columns:1fr}}
+  .intro .step{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:12px}
+  .intro .step .num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:rgba(45,212,191,.14);color:var(--accent);align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-bottom:8px}
+  .intro .step .t{color:var(--ink);font-size:12px;margin-bottom:3px}
+  .intro .bands{display:flex;flex-direction:column;gap:7px;margin:4px 0 14px}
+  .intro .bandrow{display:flex;align-items:baseline;gap:9px}
+  .intro .bandrow .dotc{width:9px;height:9px;border-radius:50%;flex:none;position:relative;top:1px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useMemo,useEffect} = React;
+
+// ⬇️⬇️ PEGÁ ACÁ EL LINK CSV PUBLICADO DE TU PLANILLA (ver pasos en el chat)
+// Si lo dejás vacío (''), el dashboard funciona en modo manual (pegar datos).
+const DATA_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXUdfaLcjepKqnvI3jEXjrr2vRdOmf8MLgGoFh4Sro-GBj7RAAZn-2l1ajYrz7zT8X7U4hCDEvnW5y/pub?gid=529206138&single=true&output=csv';
+
+// ---------- DATOS DE EJEMPLO (reemplazar pegando los tuyos) ----------
+// Formato del fetcher: Ticker,Date,High,Low,Close  — semanal
+const SAMPLE = `Ticker,Date,High,Low,Close
+DEMO1,2026-01-05,1985,1880,1955
+DEMO1,2026-01-12,2010,1930,1988
+DEMO1,2026-01-19,2060,1970,2042
+DEMO1,2026-01-26,2120,2030,2098
+DEMO1,2026-02-02,2180,2080,2155
+DEMO1,2026-02-09,2240,2140,2210
+DEMO1,2026-02-16,2320,2200,2298
+DEMO1,2026-02-23,2380,2290,2355
+DEMO1,2026-03-02,2390,2210,2245
+DEMO1,2026-03-09,2280,2120,2160
+DEMO1,2026-03-16,2210,2050,2095
+DEMO1,2026-03-23,2150,1990,2030
+DEMO1,2026-03-30,2080,1900,1945
+DEMO1,2026-04-06,1990,1850,1888
+DEMO1,2026-04-13,1920,1780,1820
+DEMO1,2026-04-20,1880,1740,1768
+DEMO1,2026-04-27,1810,1690,1722
+DEMO1,2026-05-04,1760,1640,1675
+DEMO1,2026-05-11,1720,1590,1638
+DEMO1,2026-05-18,1690,1560,1605
+DEMO1,2026-05-25,1660,1540,1568
+DEMO1,2026-06-01,1620,1490,1542
+DEMO1,2026-06-08,1700,1495,1664
+DEMO2,2026-01-05,52,48,50
+DEMO2,2026-01-12,55,49,54
+DEMO2,2026-01-19,58,53,57
+DEMO2,2026-01-26,60,55,56
+DEMO2,2026-02-02,62,55,61
+DEMO2,2026-02-09,66,60,65
+DEMO2,2026-02-16,70,64,69
+DEMO2,2026-02-23,73,67,68
+DEMO2,2026-03-02,72,64,66
+DEMO2,2026-03-09,69,61,67
+DEMO2,2026-03-16,71,65,70
+DEMO2,2026-03-23,74,68,73
+DEMO2,2026-03-30,78,71,77
+DEMO2,2026-04-06,82,75,81
+DEMO2,2026-04-13,85,78,79
+DEMO2,2026-04-20,83,74,76
+DEMO2,2026-04-27,80,72,78
+DEMO2,2026-05-04,84,76,83
+DEMO2,2026-05-11,88,81,87
+DEMO2,2026-05-18,90,83,84
+DEMO2,2026-05-25,86,79,82
+DEMO2,2026-06-01,88,80,86
+DEMO2,2026-06-08,92,84,91`;
+
+function parseData(raw){
+  const lines = raw.trim().split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return {series:[], err:"No hay datos.", decimalMode:null};
+  // detectar delimitador
+  let delim = ",";
+  if(lines[0].includes("\t")) delim="\t";
+  else if(lines[0].includes(";")) delim=";";
+
+  // header?
+  const first = lines[0].split(delim).map(x=>x.toLowerCase().trim());
+  const hasHeader = first.some(x=>/date|fecha|open|high|low|close|alto|bajo|cierre|apertura|max|min|ticker|simbolo|símbolo|symbol|papel/.test(x));
+  let idx = {ticker:-1,date:0,high:2,low:3,close:4,updated:-1};
+  let start = 0;
+  if(hasHeader){
+    start=1;
+    const find=(pats)=>first.findIndex(c=>pats.some(p=>c.includes(p)));
+    const tk=find(["ticker","simbolo","símbolo","symbol","papel"]); if(tk>=0) idx.ticker=tk;
+    const d=find(["date","fecha"]); if(d>=0) idx.date=d;
+    const h=find(["high","alto","max"]); if(h>=0) idx.high=h;
+    const l=find(["low","bajo","min"]); if(l>=0) idx.low=l;
+    const c=find(["close","cierre","adj"]); if(c>=0) idx.close=c;
+    const u=find(["updated","actualiz","hora"]); if(u>=0) idx.updated=u;
+  }
+
+  // --- AUTODETECCIÓN del separador decimal ---
+  let sawComma=false, sawDot=false, commaAfterDot=0, dotAfterComma=0;
+  for(let i=start;i<lines.length;i++){
+    const p=lines[i].split(delim);
+    [p[idx.high],p[idx.low],p[idx.close]].forEach(tok=>{
+      if(tok==null) return;
+      const t=String(tok);
+      const lc=t.lastIndexOf(","), ld=t.lastIndexOf(".");
+      if(lc>-1) sawComma=true;
+      if(ld>-1) sawDot=true;
+      if(lc>-1 && ld>-1){ if(lc>ld) commaAfterDot++; else dotAfterComma++; }
+    });
+  }
+  let decimalMode;
+  if(sawComma && sawDot){ decimalMode = (commaAfterDot>=dotAfterComma) ? 'coma' : 'punto'; }
+  else if(sawComma && !sawDot){ decimalMode = 'coma'; }
+  else { decimalMode = 'punto'; }
+
+  const num = (s)=>{
+    if(s==null) return NaN;
+    let t=String(s).trim();
+    if(decimalMode==='coma') t=t.replace(/\./g,"").replace(/,/g,".");
+    else t=t.replace(/,/g,"");
+    return parseFloat(t);
+  };
+
+  // agrupar por ticker (o serie única si no hay columna)
+  const map = new Map();
+  let updatedAt = null;
+  for(let i=start;i<lines.length;i++){
+    const p=lines[i].split(delim);
+    const close=num(p[idx.close]);
+    let high=num(p[idx.high]), low=num(p[idx.low]);
+    if(!isFinite(high)) high=close;
+    if(!isFinite(low)) low=close;
+    if(!isFinite(close)) continue;
+    if(!updatedAt && idx.updated>=0 && p[idx.updated]) updatedAt=String(p[idx.updated]).trim();
+    const name = idx.ticker>=0 ? String(p[idx.ticker]||"").trim().toUpperCase() : "SERIE";
+    if(!name) continue;
+    if(!map.has(name)) map.set(name,[]);
+    map.get(name).push({date:(p[idx.date]||("#"+i)).trim(),high,low,close});
+  }
+
+  const series=[];
+  map.forEach((rows,name)=>{
+    rows.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0); // cronológico
+    if(rows.length>=2) series.push({name,rows});
+  });
+
+  if(!series.length) return {series:[],err:"Necesito al menos 2 filas con cierre válido por ticker.",decimalMode,updatedAt};
+  return {series,err:null,decimalMode,updatedAt};
+}
+
+function donchian(rows, period, excludeCurrent){
+  const out=rows.map(r=>({...r,upper:null,mid:null,lower:null}));
+  for(let i=0;i<rows.length;i++){
+    const end = excludeCurrent ? i-1 : i;
+    const startIdx = end-period+1;
+    if(startIdx<0) continue;
+    let hi=-Infinity,lo=Infinity;
+    for(let j=startIdx;j<=end;j++){ if(rows[j].high>hi)hi=rows[j].high; if(rows[j].low<lo)lo=rows[j].low; }
+    out[i].upper=hi; out[i].lower=lo; out[i].mid=(hi+lo)/2;
+  }
+  return out;
+}
+
+function Chart({data}){
+  const W=720,H=360,pad={l:8,r:62,t:14,b:22};
+  const vis=data.filter(d=>d.upper!=null);
+  if(vis.length<2) return <div style={{color:'var(--muted)',padding:'30px 0'}}>Pocos datos para graficar con este período. Bajá el período o pegá más velas.</div>;
+  const xs=data; // mostramos todo, bandas arrancan donde hay cálculo
+  const n=xs.length;
+  let min=Infinity,max=-Infinity;
+  xs.forEach(d=>{[d.high,d.low,d.upper,d.lower,d.close].forEach(v=>{if(v!=null&&isFinite(v)){if(v<min)min=v;if(v>max)max=v;}});});
+  const padV=(max-min)*0.06; min-=padV; max+=padV;
+  const X=i=>pad.l+(i/(n-1))*(W-pad.l-pad.r);
+  const Y=v=>pad.t+(1-(v-min)/(max-min))*(H-pad.t-pad.b);
+  const path=(key)=>{let s="",started=false;xs.forEach((d,i)=>{const v=d[key];if(v==null||!isFinite(v)){started=false;return;}s+=(started?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1)+" ";started=true;});return s;};
+  // área de banda
+  let area="";{let up=[],lo=[];xs.forEach((d,i)=>{if(d.upper!=null){up.push([X(i),Y(d.upper)]);lo.push([X(i),Y(d.lower)]);}});if(up.length){area="M"+up.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" L")+" L"+lo.reverse().map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" L")+" Z";}}
+  const last=xs[n-1];
+  const gridY=[0,.25,.5,.75,1].map(t=>min+t*(max-min));
+  return (
+   <div>
+    <svg viewBox={`0 0 ${W} ${H}`}>
+      {gridY.map((g,i)=>(<g key={i}>
+        <line x1={pad.l} x2={W-pad.r} y1={Y(g)} y2={Y(g)} stroke="var(--line)" strokeWidth="1"/>
+        <text x={W-pad.r+6} y={Y(g)+3} fill="var(--dim)" fontSize="10">{g.toFixed(0)}</text>
+      </g>))}
+      {area && <path d={area} fill="var(--band)" stroke="none"/>}
+      <path d={path('upper')} fill="none" stroke="var(--up)" strokeWidth="1.6"/>
+      <path d={path('lower')} fill="none" stroke="var(--down)" strokeWidth="1.6"/>
+      <path d={path('mid')} fill="none" stroke="var(--mid)" strokeWidth="1.4" strokeDasharray="5 4"/>
+      <path d={path('close')} fill="none" stroke="var(--price)" strokeWidth="2"/>
+      {last.upper!=null && <g>
+        <line x1={pad.l} x2={W-pad.r} y1={Y(last.upper)} y2={Y(last.upper)} stroke="var(--up)" strokeWidth=".5" strokeDasharray="2 4" opacity=".5"/>
+        <line x1={pad.l} x2={W-pad.r} y1={Y(last.mid)} y2={Y(last.mid)} stroke="var(--mid)" strokeWidth=".5" strokeDasharray="2 4" opacity=".5"/>
+      </g>}
+      <circle cx={X(n-1)} cy={Y(last.close)} r="4" fill="var(--price)" stroke="var(--bg)" strokeWidth="2"/>
+    </svg>
+    <div className="legend">
+      <span><i className="swatch" style={{background:'var(--price)'}}></i>Cierre</span>
+      <span><i className="swatch" style={{background:'var(--up)'}}></i>Banda sup (máx {`{N}`})</span>
+      <span><i className="swatch" style={{background:'var(--mid)'}}></i>Línea media</span>
+      <span><i className="swatch" style={{background:'var(--down)'}}></i>Banda inf (mín {`{N}`})</span>
+    </div>
+   </div>
+  );
+}
+
+function analyze(rows, period, excludeCurrent){
+  const data = donchian(rows, Math.max(2,period|0), excludeCurrent);
+  const last = data.length?data[data.length-1]:null;
+  const has = last && last.upper!=null;
+  const range = has ? last.upper-last.lower : 0;
+  const pos = has && range>0 ? ((last.close-last.lower)/range)*100 : 0;
+  const distMidPct = has ? ((last.mid-last.close)/last.close)*100 : 0;
+  const distUpPct = has ? ((last.upper-last.close)/last.close)*100 : 0;
+  const distLoPct = has ? ((last.close-last.lower)/last.close)*100 : 0;
+  let estado={cls:'neu',txt:'En el canal'};
+  if(has){
+    if(last.close>=last.upper) estado={cls:'alc',txt:'Ruptura alcista'};
+    else if(last.close<=last.lower) estado={cls:'baj',txt:'Ruptura bajista'};
+    else if(last.close>last.mid) estado={cls:'alc',txt:'Mitad superior'};
+    else estado={cls:'baj',txt:'Mitad inferior'};
+  }
+  return {data,last,has,range,pos,distMidPct,distUpPct,distLoPct,estado};
+}
+
+function App(){
+  const [raw,setRaw]=useState(SAMPLE);
+  const [period,setPeriod]=useState(20);
+  const [excludeCurrent,setExcludeCurrent]=useState(false);
+  const [showSum,setShowSum]=useState(false);
+  const [sel,setSel]=useState(null);
+  const [auto,setAuto]=useState({on:!!DATA_URL, loading:!!DATA_URL, err:null, fetchedAt:null});
+  const isSample = raw.trim()===SAMPLE.trim();
+
+  const cargar = ()=>{
+    if(!DATA_URL) return;
+    setAuto(a=>({...a,loading:true,err:null}));
+    fetch(DATA_URL + (DATA_URL.includes('?')?'&':'?') + '_=' + Date.now())
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
+      .then(txt=>{ setRaw(txt); setShowSum(false); setAuto(a=>({...a,loading:false,err:null,fetchedAt:new Date()})); })
+      .catch(e=>setAuto(a=>({...a,loading:false,err:e.message})));
+  };
+  useEffect(()=>{ cargar(); },[]);
+
+  const {series,err,decimalMode,updatedAt}=useMemo(()=>parseData(raw),[raw]);
+
+  // análisis de TODAS las series (para la vista de portfolio)
+  const analyzed=useMemo(()=> (err?[]:series).map(s=>({name:s.name,rows:s.rows,a:analyze(s.rows,period,excludeCurrent)})),[series,err,period,excludeCurrent]);
+
+  // ticker seleccionado (default: el primero; si el elegido ya no existe, vuelve al primero)
+  const names = analyzed.map(s=>s.name);
+  const current = (sel && names.includes(sel)) ? sel : (names[0]||null);
+  const cur = analyzed.find(s=>s.name===current) || null;
+  const data = cur ? cur.a.data : [];
+  const A = cur ? cur.a : null;
+  const has = A && A.has;
+  const {last,range,pos,distMidPct,distUpPct,distLoPct,estado} = A || {};
+
+  const fmt=(v,d=2)=>v==null||!isFinite(v)?'—':v.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+  const summary = has ? `📊 *DONCHIAN ${period} · ${current} · semanal*
+═══════════════════
+Cierre: *${fmt(last.close)}*
+🟢 Banda sup: ${fmt(last.upper)}  (${distUpPct>=0?'+':''}${fmt(distUpPct)}%)
+🟡 Media: ${fmt(last.mid)}  (${distMidPct>=0?'+':''}${fmt(distMidPct)}%)
+🔴 Banda inf: ${fmt(last.lower)}  (${distLoPct>=0?'+':''}${fmt(distLoPct)}% arriba)
+Posición en canal: ${fmt(pos,0)}%  ·  Ancho: ${fmt(range)}
+Estado: ${estado.txt}
+═══════════════════
+⚠️ Análisis técnico, NO recomendación.` : '';
+
+  return (
+   <div className="wrap">
+     <div className="eyebrow">Relative Rotation Graph · familia de dashboards</div>
+     <h1>Canales de <em>Donchian</em></h1>
+     <div className="sub">Máx/mín de N velas · línea media como soporte/resistencia dinámica · pensado para gráfico semanal</div>
+
+     <div className="statusbar">
+       {auto.on ? (
+         auto.loading ? <span className="st load">↻ Cargando datos...</span> :
+         auto.err ? <span className="st bad">⚠ No se pudo actualizar ({auto.err}). Mostrando lo último disponible o el ejemplo.</span> :
+         <span className="st ok">● Datos en vivo{updatedAt?` · última actualización: ${updatedAt} hs (ARG)`:''}</span>
+       ) : <span className="st man">● Modo manual — pegá tus datos abajo</span>}
+       {auto.on && <button className="btn mini" onClick={cargar} disabled={auto.loading}>Actualizar ahora</button>}
+     </div>
+
+     <details className="intro" open>
+       <summary>Qué es esto y cómo se usa <span className="chev">▾</span></summary>
+       <div className="body">
+         <p>El <b>Canal de Donchian</b> dibuja tres líneas a partir del precio: el <b>máximo</b> y el <b>mínimo</b> de las últimas N velas, y el promedio entre ambos. Sirve para ver el rango en el que se mueve un activo y para usar esas líneas como niveles de soporte y resistencia.</p>
+         <div className="bands">
+           <div className="bandrow"><span className="dotc" style={{background:'var(--up)'}}></span><span><b style={{color:'var(--up)'}}>Banda superior</b> — el precio más alto de las últimas N velas. Techo del rango.</span></div>
+           <div className="bandrow"><span className="dotc" style={{background:'var(--mid)'}}></span><span><b style={{color:'var(--mid)'}}>Línea media</b> — el punto medio. Suele actuar como resistencia o soporte dinámico.</span></div>
+           <div className="bandrow"><span className="dotc" style={{background:'var(--down)'}}></span><span><b style={{color:'var(--down)'}}>Banda inferior</b> — el precio más bajo de las últimas N velas. Piso del rango.</span></div>
+         </div>
+         <div className="steps">
+           <div className="step"><span className="num">1</span><div className="t">Pegá los datos</div>Pegá el CSV del fetcher con columna Ticker, fecha, máximo, mínimo y cierre. Podés tener varios papeles juntos.</div>
+           <div className="step"><span className="num">2</span><div className="t">Elegí el papel y el período</div>Tocá un ticker en "Mi portfolio" para ver su detalle. N=20 es el estándar; más alto = más lento.</div>
+           <div className="step"><span className="num">3</span><div className="t">Leé el panel</div>A la derecha ves dónde está el precio dentro del canal y a qué distancia de cada banda.</div>
+         </div>
+         <p><b>Cómo leerlo rápido:</b> si el precio toca o supera la banda superior, viene fuerte (posible ruptura alcista); si toca la inferior, viene débil. La barra de colores del panel derecho te muestra de un vistazo en qué parte del canal está parado.</p>
+         <p style={{margin:0,color:'var(--dim)',fontSize:'11px'}}>El Donchian necesita máximos y mínimos de cada vela, no solo el cierre. Análisis técnico, no es una recomendación de compra o venta.</p>
+       </div>
+     </details>
+
+     {!err && analyzed.length>0 && <div className="card pf">
+       <h2>Mi portfolio — {analyzed.length} {analyzed.length===1?'papel':'papeles'} · elegí para ver el detalle</h2>
+       <div className="pfgrid">
+         {analyzed.map(s=>{
+           const a=s.a;
+           const p=a.has?Math.max(0,Math.min(100,a.pos)):50;
+           return <button key={s.name} className={"pfchip"+(s.name===current?" on":"")} onClick={()=>{setSel(s.name);setShowSum(false);}}>
+             <div className="nm">{s.name}</div>
+             <div className={"est "+(a.has?a.estado.cls:'neu')}>{a.has?a.estado.txt:'sin datos'}</div>
+             {a.has && <div className="mini"><i style={{left:p+'%'}}></i></div>}
+           </button>;
+         })}
+       </div>
+     </div>}
+
+     <div className="grid">
+       <div>
+         <div className="card">
+           <h2>Pegar datos OHLC</h2>
+           <textarea value={raw} onChange={e=>{setRaw(e.target.value);setShowSum(false);}} spellCheck="false"
+             placeholder="Ticker,Date,High,Low,Close  (o pegá tu CSV semanal)"/>
+           {err && <div className="err">⚠ {err}</div>}
+           {isSample && !err && <div className="demo">◆ Estás viendo datos de ejemplo (DEMO1 y DEMO2). Pegá tu CSV real del fetcher con columna Ticker.</div>}
+           <div className="controls">
+             <div className="field">
+               <label>Período (N)</label>
+               <input type="number" min="2" max="200" value={period} onChange={e=>setPeriod(parseInt(e.target.value)||20)}/>
+             </div>
+             <label className="toggle"><input type="checkbox" checked={excludeCurrent} onChange={e=>setExcludeCurrent(e.target.checked)}/>Excluir vela actual</label>
+             <button className="btn" onClick={()=>{setRaw(SAMPLE);setShowSum(false);}}>Restaurar ejemplo</button>
+           </div>
+           {!err && analyzed.length>0 && <div className="detect">Formato de números detectado: <b>decimal con {decimalMode}</b> · ajuste automático</div>}
+         </div>
+
+         <div className="card chartcard">
+           <h2>Gráfico {current?'· '+current:''}</h2>
+           <Chart data={data}/>
+         </div>
+       </div>
+
+       <div>
+         <div className="card">
+           <h2>Lectura del último cierre {current?'· '+current:''}</h2>
+           {has ? <>
+             <div style={{marginBottom:'10px'}}><span className={"pill "+estado.cls}>{estado.txt}</span></div>
+             <div className="readrow"><span className="k">Cierre actual</span><span className="v price">{fmt(last.close)}</span></div>
+             <div className="readrow"><span className="k">Banda superior (máx {period})</span><span className="v up">{fmt(last.upper)}</span></div>
+             <div className="readrow"><span className="k">Línea media</span><span className="v mid">{fmt(last.mid)}</span></div>
+             <div className="readrow"><span className="k">Banda inferior (mín {period})</span><span className="v down">{fmt(last.lower)}</span></div>
+             <div className="readrow"><span className="k">Ancho del canal</span><span className="v">{fmt(range)}</span></div>
+             <div style={{marginTop:'16px'}}>
+               <div className="poslbl"><span>Inferior</span><span>Media</span><span>Superior</span></div>
+               <div className="posbar"><div className="dot" style={{left:Math.max(0,Math.min(100,pos))+'%'}}></div></div>
+               <div style={{textAlign:'center',color:'var(--muted)',fontSize:'11px'}}>Precio al {fmt(pos,0)}% del canal</div>
+             </div>
+             <div className="readrow" style={{marginTop:'10px'}}><span className="k">Distancia a la media</span><span className="v mid">{distMidPct>=0?'+':''}{fmt(distMidPct)}%</span></div>
+             <div className="readrow"><span className="k">Distancia a banda sup</span><span className="v up">{distUpPct>=0?'+':''}{fmt(distUpPct)}%</span></div>
+           </> : <div style={{color:'var(--muted)'}}>Sin lectura: faltan velas para el período elegido.</div>}
+         </div>
+
+         <div className="card" style={{marginTop:'18px'}}>
+           <h2>Resumen para WhatsApp</h2>
+           <button className="btn solid" onClick={()=>{setShowSum(true);navigator.clipboard&&navigator.clipboard.writeText(summary);}}>Copiar resumen</button>
+           <div className={"summary"+(showSum?" show":"")}>{summary}</div>
+         </div>
+       </div>
+     </div>
+
+     <div className="note">
+       <b>Cómo se alimenta:</b> el Donchian se calcula con los <b>máximos y mínimos</b> de cada vela (no con el cierre). El fetcher de Apps Script trae high/low de Yahoo y arma un CSV con columna Ticker, así que podés tener todo tu portfolio en una sola pegada. Para sumar un papel nuevo, lo agregás a la lista del script y volvés a correrlo. Análisis técnico, no es recomendación de compra o venta.
+     </div>
+   </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
