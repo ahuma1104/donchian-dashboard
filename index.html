@@ -393,12 +393,7 @@ Estado: ${estado.txt}
            <div className="bandrow"><span className="dotc" style={{background:'var(--mid)'}}></span><span><b style={{color:'var(--mid)'}}>Línea media</b> — el punto medio. Suele actuar como resistencia o soporte dinámico.</span></div>
            <div className="bandrow"><span className="dotc" style={{background:'var(--down)'}}></span><span><b style={{color:'var(--down)'}}>Banda inferior</b> — el precio más bajo de las últimas N velas. Piso del rango.</span></div>
          </div>
-         <div className="steps">
-           <div className="step"><span className="num">1</span><div className="t">Pegá los datos</div>Pegá el CSV del fetcher con columna Ticker, fecha, máximo, mínimo y cierre. Podés tener varios papeles juntos.</div>
-           <div className="step"><span className="num">2</span><div className="t">Elegí el papel y el período</div>Tocá un ticker en "Mi portfolio" para ver su detalle. N=20 es el estándar; más alto = más lento.</div>
-           <div className="step"><span className="num">3</span><div className="t">Leé el panel</div>A la derecha ves dónde está el precio dentro del canal y a qué distancia de cada banda.</div>
-         </div>
-         <p><b>Cómo leerlo rápido:</b> si el precio toca o supera la banda superior, viene fuerte (posible ruptura alcista); si toca la inferior, viene débil. La barra de colores del panel derecho te muestra de un vistazo en qué parte del canal está parado.</p>
+         <p><b>Cómo leerlo rápido:</b> si el precio toca o supera la banda superior, viene fuerte (posible ruptura alcista); si toca la inferior, viene débil. La barra de colores del panel derecho te muestra de un vistazo en qué parte del canal está parado. Tocá un papel en "Stocks" para ver su detalle; podés cambiar el período (N) en Ajustes (20 es el estándar; más alto = más lento).</p>
          <p style={{margin:0,color:'var(--dim)',fontSize:'11px'}}>El Donchian necesita máximos y mínimos de cada vela, no solo el cierre. Análisis técnico, no es una recomendación de compra o venta.</p>
        </div>
      </details>
@@ -435,7 +430,7 @@ Estado: ${estado.txt}
      </details>
 
      {!err && analyzed.length>0 && <div className="card pf">
-       <h2>Mi portfolio — {analyzed.length} {analyzed.length===1?'papel':'papeles'} · elegí para ver el detalle</h2>
+       <h2>Stocks — {analyzed.length} {analyzed.length===1?'papel':'papeles'} · elegí para ver el detalle</h2>
        <div className="pfgrid">
          {analyzed.map(s=>{
            const a=s.a;
