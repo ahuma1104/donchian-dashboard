@@ -59,6 +59,10 @@
   .st.ok{color:var(--accent2)} .st.load{color:var(--mid)} .st.bad{color:var(--down)} .st.man{color:var(--muted)}
   .btn.mini{padding:5px 11px;font-size:10px}
   .btn.mini:disabled{opacity:.4;cursor:default}
+  .urlrow{display:flex;gap:10px;margin:-6px 0 18px;flex-wrap:wrap}
+  .urlrow input{flex:1;min-width:240px;background:#080c11;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-family:var(--mono);font-size:12px;padding:9px 11px}
+  .urlrow input:focus{outline:none;border-color:var(--accent)}
+  .btn.solid:disabled{opacity:.4;cursor:default}
   .readrow{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
   .readrow:last-child{border-bottom:none}
   .readrow .k{color:var(--muted);font-size:11px;letter-spacing:.06em}
@@ -112,9 +116,10 @@
 <script type="text/babel">
 const {useState,useMemo,useEffect} = React;
 
-// ⬇️⬇️ PEGÁ ACÁ EL LINK CSV PUBLICADO DE TU PLANILLA (ver pasos en el chat)
-// Si lo dejás vacío (''), el dashboard funciona en modo manual (pegar datos).
-const DATA_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXUdfaLcjepKqnvI3jEXjrr2vRdOmf8MLgGoFh4Sro-GBj7RAAZn-2l1ajYrz7zT8X7U4hCDEvnW5y/pub?gid=529206138&single=true&output=csv';
+// ⬇️ LINK CSV DE TU PLANILLA. Ya NO hace falta editarlo acá:
+// podés pegarlo una vez en la pantalla y queda guardado en tu navegador.
+// (Si querés, igual podés dejarlo fijo acá entre las comillas.)
+const DATA_URL = '';
 
 // ---------- DATOS DE EJEMPLO (reemplazar pegando los tuyos) ----------
 // Formato del fetcher: Ticker,Date,High,Low,Close  — semanal
@@ -325,18 +330,31 @@ function App(){
   const [excludeCurrent,setExcludeCurrent]=useState(false);
   const [showSum,setShowSum]=useState(false);
   const [sel,setSel]=useState(null);
-  const [auto,setAuto]=useState({on:!!DATA_URL, loading:!!DATA_URL, err:null, fetchedAt:null});
+  const [dataUrl,setDataUrl]=useState(()=>{ try{ return localStorage.getItem('donchian_data_url') || DATA_URL || ''; }catch(e){ return DATA_URL || ''; } });
+  const [urlInput,setUrlInput]=useState('');
+  const [auto,setAuto]=useState({on:false, loading:false, err:null, fetchedAt:null});
   const isSample = raw.trim()===SAMPLE.trim();
 
-  const cargar = ()=>{
-    if(!DATA_URL) return;
-    setAuto(a=>({...a,loading:true,err:null}));
-    fetch(DATA_URL + (DATA_URL.includes('?')?'&':'?') + '_=' + Date.now())
+  const cargar = (u)=>{
+    const url = (u!==undefined) ? u : dataUrl;
+    if(!url){ setAuto({on:false,loading:false,err:null,fetchedAt:null}); return; }
+    setAuto({on:true,loading:true,err:null,fetchedAt:null});
+    fetch(url + (url.includes('?')?'&':'?') + '_=' + Date.now())
       .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
-      .then(txt=>{ setRaw(txt); setShowSum(false); setAuto(a=>({...a,loading:false,err:null,fetchedAt:new Date()})); })
-      .catch(e=>setAuto(a=>({...a,loading:false,err:e.message})));
+      .then(txt=>{ setRaw(txt); setShowSum(false); setAuto({on:true,loading:false,err:null,fetchedAt:new Date()}); })
+      .catch(e=>setAuto({on:true,loading:false,err:e.message}));
   };
-  useEffect(()=>{ cargar(); },[]);
+  useEffect(()=>{ if(dataUrl) cargar(dataUrl); },[]);
+
+  const guardarUrl = ()=>{
+    const u=urlInput.trim();
+    try{ if(u) localStorage.setItem('donchian_data_url',u); }catch(e){}
+    setDataUrl(u); setUrlInput(''); cargar(u);
+  };
+  const cambiarUrl = ()=>{
+    try{ localStorage.removeItem('donchian_data_url'); }catch(e){}
+    setUrlInput(dataUrl); setDataUrl(''); setAuto({on:false,loading:false,err:null,fetchedAt:null}); setRaw(SAMPLE);
+  };
 
   const {series,err,decimalMode,updatedAt}=useMemo(()=>parseData(raw),[raw]);
 
@@ -372,13 +390,20 @@ Estado: ${estado.txt}
      <div className="sub">Máx/mín de N velas · línea media como soporte/resistencia dinámica · pensado para gráfico semanal</div>
 
      <div className="statusbar">
-       {auto.on ? (
+       {dataUrl ? (
          auto.loading ? <span className="st load">↻ Cargando datos...</span> :
-         auto.err ? <span className="st bad">⚠ No se pudo actualizar ({auto.err}). Mostrando lo último disponible o el ejemplo.</span> :
+         auto.err ? <span className="st bad">⚠ No se pudo actualizar ({auto.err}). Revisá el link o tu conexión.</span> :
          <span className="st ok">● Datos en vivo{updatedAt?` · última actualización: ${updatedAt} hs (ARG)`:''}</span>
-       ) : <span className="st man">● Modo manual — pegá tus datos abajo</span>}
-       {auto.on && <button className="btn mini" onClick={cargar} disabled={auto.loading}>Actualizar ahora</button>}
+       ) : <span className="st man">● Modo manual — configurá el link de abajo para datos en vivo</span>}
+       {dataUrl && <button className="btn mini" onClick={()=>cargar()} disabled={auto.loading}>Actualizar ahora</button>}
+       {dataUrl && <button className="btn mini" onClick={cambiarUrl}>Cambiar link</button>}
      </div>
+
+     {!dataUrl && <div className="urlrow">
+       <input type="text" value={urlInput} onChange={e=>setUrlInput(e.target.value)} spellCheck="false"
+         placeholder="Pegá acá tu link CSV de Google (termina en output=csv) y guardalo una sola vez"/>
+       <button className="btn solid" onClick={guardarUrl} disabled={!urlInput.trim()}>Guardar link</button>
+     </div>}
 
      <details className="intro" open>
        <summary>Qué es esto y cómo se usa <span className="chev">▾</span></summary>
