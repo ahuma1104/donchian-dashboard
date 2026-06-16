@@ -59,7 +59,8 @@
   .st.ok{color:var(--accent2)} .st.load{color:var(--mid)} .st.bad{color:var(--down)} .st.man{color:var(--muted)}
   .btn.mini{padding:5px 11px;font-size:10px}
   .btn.mini:disabled{opacity:.4;cursor:default}
-  .urlrow{display:flex;gap:10px;margin:-6px 0 18px;flex-wrap:wrap}
+  .urlrow{display:flex;gap:10px;margin:-6px 0 18px;flex-wrap:wrap;align-items:center}
+  .urllbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
   .urlrow input{flex:1;min-width:240px;background:#080c11;border:1px solid var(--line);border-radius:8px;color:var(--ink);font-family:var(--mono);font-size:12px;padding:9px 11px}
   .urlrow input:focus{outline:none;border-color:var(--accent)}
   .btn.solid:disabled{opacity:.4;cursor:default}
@@ -116,10 +117,8 @@
 <script type="text/babel">
 const {useState,useMemo,useEffect} = React;
 
-// ⬇️ LINK CSV DE TU PLANILLA. Ya NO hace falta editarlo acá:
-// podés pegarlo una vez en la pantalla y queda guardado en tu navegador.
-// (Si querés, igual podés dejarlo fijo acá entre las comillas.)
-const DATA_URL = '';
+// Link CSV de la planilla (se actualiza solo con tu trigger de Google).
+const DATA_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTXUdfaLcjepKqnvI3jEXjrr2vRdOmf8MLgGoFh4Sro-GBj7RAAZn-2l1ajYrz7zT8X7U4hCDEvnW5y/pub?gid=529206138&single=true&output=csv';
 
 // ---------- DATOS DE EJEMPLO (reemplazar pegando los tuyos) ----------
 // Formato del fetcher: Ticker,Date,High,Low,Close  — semanal
@@ -330,31 +329,18 @@ function App(){
   const [excludeCurrent,setExcludeCurrent]=useState(false);
   const [showSum,setShowSum]=useState(false);
   const [sel,setSel]=useState(null);
-  const [dataUrl,setDataUrl]=useState(()=>{ try{ return localStorage.getItem('donchian_data_url') || DATA_URL || ''; }catch(e){ return DATA_URL || ''; } });
-  const [urlInput,setUrlInput]=useState('');
   const [auto,setAuto]=useState({on:false, loading:false, err:null, fetchedAt:null});
-  const isSample = raw.trim()===SAMPLE.trim();
+  const dataUrl = DATA_URL;
 
-  const cargar = (u)=>{
-    const url = (u!==undefined) ? u : dataUrl;
-    if(!url){ setAuto({on:false,loading:false,err:null,fetchedAt:null}); return; }
+  const cargar = ()=>{
+    if(!dataUrl){ setAuto({on:false,loading:false,err:null,fetchedAt:null}); return; }
     setAuto({on:true,loading:true,err:null,fetchedAt:null});
-    fetch(url + (url.includes('?')?'&':'?') + '_=' + Date.now())
+    fetch(dataUrl + (dataUrl.includes('?')?'&':'?') + '_=' + Date.now())
       .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); })
       .then(txt=>{ setRaw(txt); setShowSum(false); setAuto({on:true,loading:false,err:null,fetchedAt:new Date()}); })
       .catch(e=>setAuto({on:true,loading:false,err:e.message}));
   };
-  useEffect(()=>{ if(dataUrl) cargar(dataUrl); },[]);
-
-  const guardarUrl = ()=>{
-    const u=urlInput.trim();
-    try{ if(u) localStorage.setItem('donchian_data_url',u); }catch(e){}
-    setDataUrl(u); setUrlInput(''); cargar(u);
-  };
-  const cambiarUrl = ()=>{
-    try{ localStorage.removeItem('donchian_data_url'); }catch(e){}
-    setUrlInput(dataUrl); setDataUrl(''); setAuto({on:false,loading:false,err:null,fetchedAt:null}); setRaw(SAMPLE);
-  };
+  useEffect(()=>{ if(dataUrl) cargar(); },[]);
 
   const {series,err,decimalMode,updatedAt}=useMemo(()=>parseData(raw),[raw]);
 
@@ -392,18 +378,11 @@ Estado: ${estado.txt}
      <div className="statusbar">
        {dataUrl ? (
          auto.loading ? <span className="st load">↻ Cargando datos...</span> :
-         auto.err ? <span className="st bad">⚠ No se pudo actualizar ({auto.err}). Revisá el link o tu conexión.</span> :
+         auto.err ? <span className="st bad">⚠ No se pudo actualizar ({auto.err}). Revisá tu conexión.</span> :
          <span className="st ok">● Datos en vivo{updatedAt?` · última actualización: ${updatedAt} hs (ARG)`:''}</span>
-       ) : <span className="st man">● Modo manual — configurá el link de abajo para datos en vivo</span>}
+       ) : <span className="st man">● Sin datos</span>}
        {dataUrl && <button className="btn mini" onClick={()=>cargar()} disabled={auto.loading}>Actualizar ahora</button>}
-       {dataUrl && <button className="btn mini" onClick={cambiarUrl}>Cambiar link</button>}
      </div>
-
-     {!dataUrl && <div className="urlrow">
-       <input type="text" value={urlInput} onChange={e=>setUrlInput(e.target.value)} spellCheck="false"
-         placeholder="Pegá acá tu link CSV de Google (termina en output=csv) y guardalo una sola vez"/>
-       <button className="btn solid" onClick={guardarUrl} disabled={!urlInput.trim()}>Guardar link</button>
-     </div>}
 
      <details className="intro" open>
        <summary>Qué es esto y cómo se usa <span className="chev">▾</span></summary>
@@ -473,20 +452,15 @@ Estado: ${estado.txt}
      <div className="grid">
        <div>
          <div className="card">
-           <h2>Pegar datos OHLC</h2>
-           <textarea value={raw} onChange={e=>{setRaw(e.target.value);setShowSum(false);}} spellCheck="false"
-             placeholder="Ticker,Date,High,Low,Close  (o pegá tu CSV semanal)"/>
+           <h2>Ajustes</h2>
            {err && <div className="err">⚠ {err}</div>}
-           {isSample && !err && <div className="demo">◆ Estás viendo datos de ejemplo (DEMO1 y DEMO2). Pegá tu CSV real del fetcher con columna Ticker.</div>}
            <div className="controls">
              <div className="field">
                <label>Período (N)</label>
                <input type="number" min="2" max="200" value={period} onChange={e=>setPeriod(parseInt(e.target.value)||20)}/>
              </div>
              <label className="toggle"><input type="checkbox" checked={excludeCurrent} onChange={e=>setExcludeCurrent(e.target.checked)}/>Excluir vela actual</label>
-             <button className="btn" onClick={()=>{setRaw(SAMPLE);setShowSum(false);}}>Restaurar ejemplo</button>
            </div>
-           {!err && analyzed.length>0 && <div className="detect">Formato de números detectado: <b>decimal con {decimalMode}</b> · ajuste automático</div>}
          </div>
 
          <div className="card chartcard">
